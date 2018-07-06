@@ -12,9 +12,8 @@ from sklearn.cluster import KMeans
 import MLE_normal as MN
 import scipy.optimize as scio
 
-#f=open('C:/Users/孙永超/Desktop/model/original data/半监督学习—训练集.csv')
-#f=open('C:/Users/孙永超/Desktop/model/original data/维信testdata.csv',encoding='UTF-8')
-f=open('C:/Users/孙永超/Desktop/model/original data/pf_data_new2.csv',encoding='UTF-8')
+f=open('C:/Users/Desktop/model/original data/半监督学习—训练集.csv')
+
 
 #f=open('C:/Users/HP/Desktop/model/original data/testdata.csv')#1200条样本
 Data=pd.read_csv(f)
@@ -24,7 +23,7 @@ f.close()
 #del X['scorerevoloan']
 #X_types=pd.Series(X.dtypes,dtype='str')
 
-f2=open('/Users/孙永超/Desktop/model/original data/半监督学习变量.csv',encoding='UTF-8')
+f2=open('/Users/Desktop/model/original data/半监督学习变量.csv',encoding='UTF-8')
 missing_value_feed=pd.read_csv(f2)
 f2.close()
 missing_value_feed.index=missing_value_feed.iloc[:,0]
@@ -36,11 +35,7 @@ for i in  range(0,len(Data.columns)):
         if_letitgo[i]=0
 
 X=Data.iloc[0:40000,np.where(if_letitgo==0)[0]]
-#'''维信'''
-#score=X['scorerevoloan']
-#del X['scorerevoloan']
-#Y_true=X['other_var1']
-#del X['other_var1']
+
 '''pf'''
 score=X['scorerevoloan']
 del X['scorerevoloan']
@@ -366,6 +361,7 @@ plt.plot(score_pred,'.')
 ##pca = PCA()
 #pca.fit(X)
 #pca.components_
+
 #'''极大似然估计，无监督'''
 #X_plus = np.hstack([X_pca[:,[0,1]],np.ones([len(X_pca),1])])
 #def like(A):
