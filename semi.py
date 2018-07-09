@@ -46,7 +46,8 @@ Y_true=Data.iloc[0:40000,0]
 
 #X = X.iloc[:,np.where((X_types=='float64')|(X_types=='int64'))[0]]
 
-''' 1.粗筛变量，删掉缺失值超过95%（可调整）的变量 '''
+
+''' 粗筛变量，删掉缺失值超过95%（可调整）的变量 '''
 nan_ratio_threshold=0.9 #nan_ratio_threshold为阈值
 count_null=np.zeros(np.shape(X))
 count_null[np.where(X.isnull())]=1
@@ -54,8 +55,7 @@ count_null_sumfactor=sum(count_null)/np.shape(X)[0]
 count_null_sumfactor=pd.Series(count_null_sumfactor,index=X.columns)
 X=X.iloc[:,np.where(count_null_sumfactor<=nan_ratio_threshold)[0]] 
 
-
-''' 2.删掉非nan同值超过95%（可调整）的变量 '''
+''' 删掉非nan同值超过95%（可调整）的变量 '''
 mode_ratio_threshold=0.9 #mode_ratio_threshold为阈值
 raw_feature_num=len(X.columns)
 if_delete_feature=np.zeros([raw_feature_num,1])
@@ -64,7 +64,7 @@ for i in range(0,raw_feature_num):
 X=X.iloc[:,np.where(if_delete_feature==0)[0]]
 X_types=pd.Series(X.dtypes,dtype='str')
 
-''' 3.填补空缺值：数值类型变量填充值为-1，类别型变量填充值为blank '''
+''' 填补空缺值：数值类型变量填充值为指定值，类别型变量填充值为blank '''
 for i in range(0,np.shape(X)[1]):
     if len(np.where(X.iloc[:,i].isnull())[0])>0: #若有缺失值
         if X_types[i]=='float64' or X_types[i]=='int64':#若为数值型，则填充为指定值           
@@ -73,18 +73,7 @@ for i in range(0,np.shape(X)[1]):
         else:#若为分类型，则填充为blank
             X.iloc[np.where(X.iloc[:,i].isnull())[0],i]='blank'
             
-#
-#for i in range(0,np.shape(X)[1]):
-#    if len(np.where(X.iloc[:,i].isna())[0])>0: #若有缺失值
-#        if X_types[i]=='float64' or X_types[i]=='int64':#若为数值型，则填充为-99           
-#            X.iloc[np.where(X.iloc[:,i].isna())[0],i]=-1           
-#            #判断原数据是否是整数型，后面SMOTE也会用到
-#            if len(np.where(X.iloc[np.where(~X.iloc[:,i].isna())[0],i]-np.array(X.iloc[np.where(~X.iloc[:,i].isna())[0],i],dtype='int'))[0])==0:
-#                X_types[i]='int64'          
-#        else:#若为分类型，则填充为blank
-#            X.iloc[np.where(X.iloc[:,i].isna())[0],i]='blank'
-#            
-''' 4.删掉类型超过10（可调整）的非整型非浮点数型变量 '''
+''' 删掉类型超过10（可调整）的非整型非浮点数型变量 '''
 if_keep_feature=np.ones([len(X.columns),1]) 
 for i in range(0,np.shape(X)[1]):
     if  X_types[i]=='str' or X_types[i]=='object':
@@ -92,7 +81,7 @@ for i in range(0,np.shape(X)[1]):
 X=X.iloc[:,np.where(if_keep_feature==1)[0]]
 X_types=pd.Series(X.dtypes,dtype='str')
 
-'''5.处理类别变量：变为哑变量'''
+'''处理类别变量：变为哑变量'''
 X_num_position=np.where((X_types=='int64')|(X_types=='float64'))[0]
 X_num=X.iloc[:,X_num_position]
 X_num_types=X_types[X_num_position]
@@ -113,15 +102,11 @@ for i in range(0,len(X_category_dummies.columns)):
             X_category_dummies_belongs[i]=j
             count_null_sumfactor_dummys.iloc[i]=count_null_sumfactor.loc[X_category.columns[j]]
             break            
-            
-#X_dummies=X_num.join(X_category_dummies)
 
-X_dummies=pd.concat([X_num,X_category_dummies],axis=1) 
-#X_dummies.index=list(range(0,len(X_dummies.index)))         
+X_dummies=pd.concat([X_num,X_category_dummies],axis=1)     
 count_null_sumfactor=count_null_sumfactor.append(count_null_sumfactor_dummys)
 X=X_dummies
 
-#X = pd.DataFrame(preprocessing.scale(X),columns=X_dummies.columns)#对其进行归一处理
 
 '''清理相关系数过高的变量组，若两个变量的相关系数大于阈值，删除缺失值高的变量'''
 corrcoef_threshold=0.8 #corrcoef_threshold为逐步回归前消除共线性的阈值
@@ -153,65 +138,16 @@ while len(large_in_corrcoef_matrix_chosen_feature[0])>0:#循环操作，直至�
 print('删除相关系数超过{0}的变量后，还剩余{1}个候选变量'.format(corrcoef_threshold,len(chosen_feature_en_names)))
 X = X.loc[:,chosen_feature_en_names]
 
-'''6.PCA处理数据'''
+'''PCA处理数据'''
 X_scaled = X
 X_scaled = preprocessing.scale(X)#对其进行归一处理
 X_scaled=pd.DataFrame(X_scaled,index=X.index,columns=X.columns)
 model=PCA(n_components=0.8, svd_solver='full')
 X_pca=model.fit_transform(X_scaled)
 X_PCA=pd.DataFrame(X_pca,index=X.index)
-#X_pca = preprocessing.scale(X_pca)#对其进行归一处理
 print(model.explained_variance_ratio_)
-'''Kmeans贴标签'''
-#km_model=KMeans(n_clusters=25,
-#     init='k-means++', 
-#    n_init=100, 
-#    max_iter=300, 
-#    tol=0.0001, 
-#    precompute_distances='auto', 
-#    verbose=0, 
-#    random_state=714, 
-#    copy_x=False, 
-#    n_jobs=-1, 
-#    algorithm='auto'
-#    )
-##km_model.fit(np.array(X_scaled))
-#km_model.fit(np.array(X_pca))
-#lable_pred=pd.DataFrame(km_model.labels_,index=X.index)
-#score_mean_new=score
-#
-#mean_score=[]
-#label_sum=[]
-#for i in range(0,25):
-#    this_label=np.where(lable_pred==i)[0]
-#    label_sum.append(len(this_label))
-#    mean_score.append(np.mean(score_mean_new.iloc[this_label]))
-#
-#results=pd.concat([pd.Series(mean_score),pd.Series(label_sum)],axis=1)
-'''通过results判断哪些列标记1和0'''
-#if_damnchoose=pd.Series(np.zeros([len(score),]),index=X.index)
-#if_damnchoose.iloc[np.where((lable_pred.iloc[:,0]==7)|(lable_pred.iloc[:,0]==13)|(lable_pred.iloc[:,0]==15))[0]]=-1#定义为好样本
-#if_damnchoose.iloc[np.where((lable_pred.iloc[:,0]==16)|(lable_pred.iloc[:,0]==6))[0]]=1#定义为坏样本
-#
-#X_with_Y=np.array(X_pca[if_damnchoose!=0])
-#X_without_Y=np.array(X_pca[if_damnchoose==0])
-#Y=pd.Series(np.zeros([len(X.index),])*np.nan,index=X.index)
-#Y.loc[if_damnchoose==1]=1
-#Y.loc[if_damnchoose==-1]=0
-#Y_X=np.array(Y.loc[if_damnchoose!=0])
-#ind1 = len(np.where(Y_X==1))
-#ind0 = len(np.where(Y_X==0))
-#VIF=[]
-#for i in range(0,len(chosen_feature_en_names)):
-#   this_VIF=variance_inflation_factor(np.array(X.loc[:,chosen_feature_en_names]),i)
-#   VIF.append(this_VIF)
-#VIF=pd.Series(VIF,index=chosen_feature_en_names)
-#for i in range(len(VIF)):
-#    if VIF[i]>10:
-#        chosen_feature_en_names.remove(VIF.index[i])
-#X = X.loc[:,chosen_feature_en_names]
 
-'''循环聚类'''
+'''循环聚类，通过score和聚类给部分样本打标签'''
 ind1 = int(len(X)*0.1)
 ind0 = int(len(X)*0.2)
 
@@ -247,7 +183,7 @@ while num_1>0.1*ind1:
              verbose=0, 
              random_state=714, 
              copy_x=False, 
-             n_jobs=-1, 
+             n_jobs=1, 
              algorithm='auto'
              )
     print('1.1')
@@ -272,8 +208,7 @@ while num_1>0.1*ind1:
     X_1 = X_1[this_label[choose_class],:]
     score_1 = score_1[this_label[choose_class]]
     Y_true_1 = Y_true_1[this_label[choose_class]]
-    
-    
+       
 while num_0>0.1*ind0:
     km_model_0=KMeans(n_clusters=2,
              init='k-means++', 
@@ -284,7 +219,7 @@ while num_0>0.1*ind0:
              verbose=0, 
              random_state=714, 
              copy_x=False, 
-             n_jobs=-1, 
+             n_jobs=1, 
              algorithm='auto'
              )
     km_model_0.fit(np.array(X_0))
@@ -307,69 +242,70 @@ while num_0>0.1*ind0:
     X_0 = X_0[this_label[choose_class],:]
     score_0 = score_0[this_label[choose_class]]
     Y_true_0 = Y_true_0[this_label[choose_class]]
-    
 
 X_with_Y = np.vstack([X_1,X_0])
 Y_X = np.vstack([np.ones([num_1,1]),np.zeros([num_0,1])])
 
-'''7.给打分前10%和后10%（可调整）的样本打上0和1的标签'''
-#ind1 = int(len(X)*0.05)
-#ind0 = int(len(X)*0.2)
-#Y_X = np.hstack((np.ones(ind1),np.zeros(ind0)))
-#X_Y = X.join(score).join(Y_true)
-#X_Y = X_Y.sort_values(by='scorerevoloan')
-#X_with_Y = np.vstack((X_pca[X_Y.index[0:ind1],:],X_pca[X_Y.index[len(X)-ind0:len(X)],:]))
-#X_without_Y = X_pca[X_Y.index[ind1:len(X)-ind0],:]
+'''分别对两类数据X_1和X_2做pca，不能调包，需要找出特征值比较小的方向'''
+eigenvalue_0,featurevector_0=la.eig(np.cov(X_0.T))
+eigenvalue_1,featurevector_1=la.eig(np.cov(X_1.T))
+idx_0 = eigenvalue_0.argsort()[::-1]
+idx_1 = eigenvalue_1.argsort()[::-1]
+eigenValues_0 = eigenvalue_0[idx_0]
+eigenValues_1 = eigenvalue_1[idx_1]
+FeatureVectors_0 = featurevector_0[:,idx_0]
+FeatureVectors_1 = featurevector_1[:,idx_1]
+
+'''设置阈值alpha，对两组数据中方差小于alpha的方向做逻辑回归，对两组数据中方差大于alpha的方向做高斯混合模型'''
+alpha = 0.4
+LR_Vectors = np.vstack([FeatureVectors_0[eigenValues_0<alpha,:],FeatureVectors_1[eigenValues_1<alpha,:]])
+GM_Vectors = np.vstack([FeatureVectors_0[eigenValues_0>alpha,:],FeatureVectors_1[eigenValues_1>alpha,:]])
+X_Y_LR = X_with_Y.dot(LR_Vectors.T)
+X_Y_GM = X_with_Y.dot(GM_Vectors.T)
+X_LR = X_pca.dot(LR_Vectors.T)
+X_GM = X_pca.dot(GM_Vectors.T)
+X_without_Y_GM = X_without_Y.dot(GM_Vectors.T)
+
+'''再做一次PCA'''
+PCA_LR=PCA(n_components=0.8, svd_solver='full')
+X_Y_LR_pca=model.fit_transform(X_Y_LR)
+X_LR_pca=model.transform(X_LR)
+
+PCA_GM = PCA(n_components=0.8, svd_solver='full')
+X_Y_GM_pca = model.fit_transform(X_Y_GM)
+X_GM_pca = model.transform(X_GM)
+X_without_Y_GM_pca = model.transform(X_without_Y_GM)
 
 
+'''逻辑回归'''
+LR_model = LogisticRegression(penalty='l1', 
+                              dual=False, 
+                              tol=0.0001, 
+                              C=1.0, 
+                              fit_intercept=True, 
+                              intercept_scaling=1, 
+                              class_weight=None, 
+                              random_state=None, 
+                              solver='saga', 
+                              max_iter=200, 
+                              multi_class='ovr', 
+                              verbose=0, 
+                              warm_start=False, 
+                              n_jobs=1
+                              )
+LR_model.fit(np.hstack([X_Y_LR]), Y_X)
+score_pred_LR = LR_model.decision_function(np.hstack([X_LR]))
+ks_value_LR,bad_percent_LR,good_percent_LR=pf.cal_ks(-score_pred_LR,Y_true,section_num=20)
 
+'''高斯混合模型'''
+[Miu,Sigma,a] = gm.train(X_Y_GM,Y_X,X_without_Y_GM,0.001)
+score_pred_GM = gm.predict(X_GM,Miu,Sigma,a)
+#score_pred_GM = gm.predict3(X_GM,Miu,Sigma,a)
+score_pred_GM[np.where(score_pred_GM<0)] = 0
+ks_value_GM,bad_percent_GM,good_percent_GM=pf.cal_ks(-score_pred_GM,Y_true,section_num=20)
 
-[Miu,Sigma,a] = gm.train(X_with_Y,Y_X,X_without_Y,0.01)
-sig = []
-W = []
-for i in range(2):
-    b,c = la.eig(Sigma[i])
-    sig += [la.norm(np.diag(c.dot(np.sqrt(b))),axis=1)]
-    W += [np.diag(np.sqrt(1/b)).dot(c.T)]
-pred = []
-score_pred = []
-
-#for i in range(ind1):
-#    pred += [gm.predict(X_with_Y[i],Miu,Sigma,a)[0]]
-#    score_pred += [gm.predict(X_with_Y[i],Miu,Sigma,a)[1]]
-#    
-#for i in range(len(X)):
-#    score_pred += [gm.predict(X_pca[i,:],Miu,Sigma,a)[1]]
-
-for i in range(len(X)):
-#    Pred,Score_pred = gm.predict2(X_pca[i,:],Miu,a,W,sig,np.inf)
-    Pred,Score_pred = gm.predict(X_pca[i,:],Miu,Sigma,a)
-    pred += [Pred]
-    score_pred += [Score_pred]
-#for i in range(len(X)):
-#    pred += [gm.predict2(X_pca[i,:],Miu,a,W)[1]]
-score_pred = np.array(score_pred)
-score_pred[np.where(score_pred<0)] = 0
+'''将两个结果标准化再按比例相加'''
+score_pred_LR = preprocessing.scale(score_pred_LR)
+score_pred_GM = preprocessing.scale(score_pred_GM)
+score_pred = score_pred_LR + score_pred_GM
 ks_value,bad_percent,good_percent=pf.cal_ks(-score_pred,Y_true,section_num=20)
-for i in range(num_0):
-    Pred,Score_pred = gm.predict2(X_with_Y[i+num_1],Miu,a,W,sig,np.inf)
-    pred += [Pred]
-    score_pred += [Score_pred]
-#score = np.array(score)
-plt.plot(score_pred,'.')
-#plt.plot(pred,'.')
-##pca = PCA()
-#pca.fit(X)
-#pca.components_
-
-#'''极大似然估计，无监督'''
-#X_plus = np.hstack([X_pca[:,[0,1]],np.ones([len(X_pca),1])])
-#def like(A):
-#    return(-MN.likelihood(A,X_plus))
-#def dlike(A):
-#    return(-np.array(MN.dlikelihood(A,X_plus)).reshape(len(X_plus.T),1))
-#A0 = np.ones([np.shape(X_plus)[1],1])
-#OPT = scio.minimize(like,A0,method='Nelder-Mead',tol=0.01)
-#A = OPT.x
-#score_un = X_plus.dot(A)
-#ks_value2,bad_percent2,good_percent2=pf.cal_ks(-score_un,Y_true,section_num=20)
